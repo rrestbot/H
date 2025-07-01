@@ -80,7 +80,7 @@
             margin-top: 20px;
             font-size: 1rem;
             color: #555;
-            display: none;
+            display: none; /* Initially hidden */
         }
         .image-container {
             margin-top: 30px;
@@ -97,13 +97,13 @@
             max-width: 100%;
             height: auto;
             border-radius: 8px;
-            display: none;
+            display: none; /* Initially hidden */
         }
         .error-message {
             color: #e74c3c;
             margin-top: 20px;
             font-size: 0.9rem;
-            display: none;
+            display: none; /* Initially hidden */
         }
     </style>
 </head>
@@ -114,7 +114,7 @@
 
         <div class="input-group">
             <label for="imagePrompt">ছবির বর্ণনা:</label>
-            <textarea id="imagePrompt" placeholder="একটি মানুষ একটি বাইকে বসে আছে, পিছন থেকে পুলিশ তাকে হয়রানি করছে, দৃশ্যটি একটি গ্রামে যেখানে বৃষ্টি হচ্ছে, পাশে একটি বড় পুকুর আছে, বাইকের নাম্বার প্লেটে লেখা আছে Dinajpur L 134415, বাইকটি Pulsar N250 V2 মডেলের।"></textarea>
+            <textarea id="imagePrompt" placeholder="একটি মানুষ একটি বাইকে বসে আছে, পিছন থেকে পুলিশ তাকে হয়রানি করছে, দৃশ্যটি একটি গ্রামে যেখানে বৃষ্টি হচ্ছে, পাশে একটি বড় পুকুর আছে, বাইকের নাম্বার প্লেটে লেখা আছে Dinajpur L 134415, বাইকটি Pulsar N250 V2 মডেলের।">একটি মানুষ একটি বাইকে বসে আছে, পিছন থেকে পুলিশ তাকে হয়রানি করছে, দৃশ্যটি একটি গ্রামে যেখানে বৃষ্টি হচ্ছে, পাশে একটি বড় পুকুর আছে, বাইকের নাম্বার প্লেটে লেখা আছে Dinajpur L 134415, বাইকটি Pulsar N250 V2 মডেলের।</textarea>
         </div>
 
         <button class="generate-button" onclick="generateImage()">ছবি তৈরি করুন</button>
@@ -134,15 +134,34 @@
             const generatedImage = document.getElementById('generatedImage');
             const errorMessage = document.getElementById('errorMessage');
 
+            // Reset previous states
             loadingIndicator.style.display = 'block';
             generatedImage.style.display = 'none';
             errorMessage.style.display = 'none';
+            generatedImage.src = ''; // Clear previous image
 
-            const promptText = promptInput.value || "A person is sitting on a bike, police are harassing him from behind. The scene is in a village where it is raining. There is a large pond nearby. The bike's number plate says 'Dinajpur L 134415'. The bike model is Pulsar N250 V2.";
+            const promptText = promptInput.value.trim(); // Get trimmed value
+
+            if (!promptText) {
+                errorMessage.textContent = 'ছবি তৈরির জন্য একটি বর্ণনা দিন।';
+                errorMessage.style.display = 'block';
+                loadingIndicator.style.display = 'none';
+                return;
+            }
 
             try {
-                const payload = { instances: { prompt: promptText }, parameters: { "sampleCount": 1} };
-                const apiKey = ""; // If you want to use models other than imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+                // Payload for image generation
+                const payload = {
+                    instances: {
+                        prompt: promptText
+                    },
+                    parameters: {
+                        "sampleCount": 1 // Requesting one image
+                    }
+                };
+
+                // API key is left empty; Canvas will inject it at runtime
+                const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -151,22 +170,32 @@
                     body: JSON.stringify(payload)
                 });
 
+                // Check if the response was successful (HTTP status 200-299)
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API ত্রুটি: ${response.status} ${response.statusText} - ${errorData.error.message || 'অজানা ত্রুটি'}`);
+                }
+
                 const result = await response.json();
 
+                // Check if the response contains the expected image data
                 if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
                     const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
                     generatedImage.src = imageUrl;
-                    generatedImage.style.display = 'block';
+                    generatedImage.style.display = 'block'; // Show the image
                 } else {
-                    errorMessage.textContent = 'ছবি তৈরি করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।';
+                    // Handle cases where the response structure is unexpected or content is missing
+                    errorMessage.textContent = 'ছবি তৈরি করা যায়নি। API থেকে কোনো ছবি ডেটা পাওয়া যায়নি।';
                     errorMessage.style.display = 'block';
-                    console.error('API response structure unexpected:', result);
+                    console.error('API response structure unexpected or no image data:', result);
                 }
             } catch (error) {
+                // Catch any errors during the fetch or processing
                 errorMessage.textContent = 'ছবি তৈরি করার সময় একটি ত্রুটি হয়েছে: ' + error.message;
                 errorMessage.style.display = 'block';
                 console.error('Error generating image:', error);
             } finally {
+                // Always hide the loading indicator
                 loadingIndicator.style.display = 'none';
             }
         }
@@ -174,3 +203,4 @@
 </body>
 </html>
 
+    
