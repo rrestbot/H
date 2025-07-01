@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>বৃষ্টিভেজা গ্রামের দৃশ্য</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .description {
+            font-size: 1rem;
+            color: #555;
+            margin-bottom: 25px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #34495e;
+            text-align: left;
+        }
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 80px;
+            box-sizing: border-box;
+        }
+        .generate-button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+        }
+        .generate-button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        .generate-button:active {
+            transform: translateY(0);
+        }
+        .loading-indicator {
+            margin-top: 20px;
+            font-size: 1rem;
+            color: #555;
+            display: none;
+        }
+        .image-container {
+            margin-top: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px; /* Placeholder height */
+            background-color: #f9f9f9;
+        }
+        .generated-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: none;
+        }
+        .error-message {
+            color: #e74c3c;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">ছবি তৈরি করুন</div>
+        <div class="description">আপনার বর্ণনা অনুযায়ী একটি ছবি তৈরি করতে নিচে লিখুন।</div>
+
+        <div class="input-group">
+            <label for="imagePrompt">ছবির বর্ণনা:</label>
+            <textarea id="imagePrompt" placeholder="একটি মানুষ একটি বাইকে বসে আছে, পিছন থেকে পুলিশ তাকে হয়রানি করছে, দৃশ্যটি একটি গ্রামে যেখানে বৃষ্টি হচ্ছে, পাশে একটি বড় পুকুর আছে, বাইকের নাম্বার প্লেটে লেখা আছে Dinajpur L 134415, বাইকটি Pulsar N250 V2 মডেলের।"></textarea>
+        </div>
+
+        <button class="generate-button" onclick="generateImage()">ছবি তৈরি করুন</button>
+
+        <div id="loading" class="loading-indicator">ছবি তৈরি হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন।</div>
+        <div id="errorMessage" class="error-message"></div>
+
+        <div class="image-container">
+            <img id="generatedImage" class="generated-image" alt="তৈরি করা ছবি">
+        </div>
+    </div>
+
+    <script>
+        async function generateImage() {
+            const promptInput = document.getElementById('imagePrompt');
+            const loadingIndicator = document.getElementById('loading');
+            const generatedImage = document.getElementById('generatedImage');
+            const errorMessage = document.getElementById('errorMessage');
+
+            loadingIndicator.style.display = 'block';
+            generatedImage.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            const promptText = promptInput.value || "A person is sitting on a bike, police are harassing him from behind. The scene is in a village where it is raining. There is a large pond nearby. The bike's number plate says 'Dinajpur L 134415'. The bike model is Pulsar N250 V2.";
+
+            try {
+                const payload = { instances: { prompt: promptText }, parameters: { "sampleCount": 1} };
+                const apiKey = ""; // If you want to use models other than imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    generatedImage.src = imageUrl;
+                    generatedImage.style.display = 'block';
+                } else {
+                    errorMessage.textContent = 'ছবি তৈরি করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।';
+                    errorMessage.style.display = 'block';
+                    console.error('API response structure unexpected:', result);
+                }
+            } catch (error) {
+                errorMessage.textContent = 'ছবি তৈরি করার সময় একটি ত্রুটি হয়েছে: ' + error.message;
+                errorMessage.style.display = 'block';
+                console.error('Error generating image:', error);
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
+
